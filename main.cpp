@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstdint>
+#include <cctype>
 
 using namespace std;
 
@@ -29,9 +30,9 @@ void outputHeaderEditor()
     cout << "======================================" << endl;
     cout << "                -- Editor --" << endl;
     cout << "1. Lihat Semua Artikel" << endl;
-    cout << "2. Urutkan Artikel" << endl;
-    cout << "3. Tambah Artikel" << endl;
-    cout << "4. Cari dan Edit Artikel" << endl;
+    cout << "2. Tambah Artikel" << endl;
+    cout << "3. Cari dan Edit Artikel" << endl;
+    cout << "4. Urutkan Artikel" << endl;
     cout << "5. Komentar Masuk" << endl;
     cout << "0. Kembali" << endl;
     cout << endl;
@@ -126,80 +127,65 @@ bool inputYN(string label)
     }
 }
 
+bool isValidArticleIdFormat(const string &id)
+{
+    if (id.length() != 4)
+        return false;
+
+    if (id[0] != 'A')
+        return false;
+
+    for (int i = 1; i < 4; ++i)
+    {
+        if (!isdigit(id[i]))
+            return false;
+    }
+
+    return true;
+}
+
+string inputId(const string &label)
+{
+    string id;
+    while (true)
+    {
+        cout << label << "> ";
+        getline(cin, id);
+
+        if (!isValidArticleIdFormat(id))
+        {
+            cout << "Format ID tidak valid. Gunakan format A### (contoh: A001)." << endl;
+            continue;
+        }
+
+        return id;
+    }
+}
+
+bool isArticleId(const string &str)
+{
+    if (str.length() != 4)
+        return false;
+
+    if (str[0] != 'A')
+        return false;
+
+    for (int i = 1; i < 4; ++i)
+    {
+        if (!isdigit(str[i]))
+            return false;
+    }
+
+    return true;
+}
+
 struct CommentNode
 {
     string articleId;
     string text;
     CommentNode *next;
-};
 
-struct Article
-{
-    string id;
-    string title;
-    string content;
-    string category;
-    string relatedIds[MAX_ADJ];
-    int relatedCount;
-    int commentCount = 0;
-
-    CommentNode *commentsHead = nullptr;
-};
-
-struct HashEntry
-{
-    string id;
-    Article *articlePtr;
-};
-
-struct StackNode
-{
-    Article *article;
-    StackNode *next;
-
-    StackNode(Article *a) : article(a), next(nullptr) {}
-};
-
-struct Stack
-{
-    StackNode *top = nullptr;
-
-    void push(Article *a)
-    {
-        StackNode *newNode = new StackNode(a);
-        newNode->next = top;
-        top = newNode;
-    }
-
-    Article *pop()
-    {
-        if (isEmpty())
-            return nullptr;
-
-        StackNode *temp = top;
-        Article *result = top->article;
-        top = top->next;
-        delete temp;
-        return result;
-    }
-
-    Article *peek()
-    {
-        return isEmpty() ? nullptr : top->article;
-    }
-
-    bool isEmpty()
-    {
-        return top == nullptr;
-    }
-
-    ~Stack()
-    {
-        while (!isEmpty())
-        {
-            pop();
-        }
-    }
+    CommentNode(string id, string txt) : articleId(id), text(txt), next(nullptr) {}
 };
 
 struct CommentQueue
@@ -209,10 +195,7 @@ struct CommentQueue
 
     void enqueueComment(string articleId, string text)
     {
-        CommentNode *newNode = new CommentNode;
-        newNode->articleId = articleId;
-        newNode->text = text;
-        newNode->next = nullptr;
+        CommentNode *newNode = new CommentNode(articleId, text);
 
         if (rearComment == nullptr)
         {
@@ -257,6 +240,290 @@ struct CommentQueue
     }
 };
 
+struct Article
+{
+    string id;
+    string title;
+    string content;
+    string category;
+    // string relatedIds[MAX_ADJ];
+    // int relatedCount;
+    int commentCount = 0;
+
+    CommentNode *commentsHead = nullptr;
+};
+
+struct ArticleVertex
+{
+    Article *article;
+    ArticleVertex *adj[MAX_ADJ];
+    int adjCount = 0;
+    bool visited = false;
+
+    ArticleVertex(Article *a) : article(a) {}
+
+    void addEdge(ArticleVertex *v)
+    {
+        if (adjCount < MAX_ADJ)
+        {
+            adj[adjCount++] = v;
+        }
+    }
+
+    void removeEdge(ArticleVertex *v)
+    {
+        for (int i = 0; i < adjCount; i++)
+        {
+            if (adj[i] == v)
+            {
+                for (int j = i; j < adjCount - 1; j++)
+                {
+                    adj[j] = adj[j + 1];
+                }
+                adjCount--;
+                break;
+            }
+        }
+    }
+};
+
+struct ArticleGraph
+{
+    ArticleVertex *vertices[MAX_ARTICLE];
+    int vertexCount = 0;
+
+    void addArticle(Article *a)
+    {
+        if (vertexCount < MAX_ARTICLE)
+        {
+            vertices[vertexCount++] = new ArticleVertex(a);
+        }
+    }
+
+    void addEdge(Article *a1, Article *a2)
+    {
+        ArticleVertex *v1 = findVertex(a1);
+        ArticleVertex *v2 = findVertex(a2);
+
+        if (v1 && v2)
+        {
+            v1->addEdge(v2);
+            v2->addEdge(v1);
+        }
+    }
+
+    ArticleVertex *findVertex(Article *a)
+    {
+        for (int i = 0; i < vertexCount; i++)
+        {
+            if (vertices[i]->article == a)
+                return vertices[i];
+        }
+        return nullptr;
+    }
+
+    void removeArticle(Article *a)
+    {
+        ArticleVertex *v = findVertex(a);
+        if (v)
+        {
+            for (int i = 0; i < v->adjCount; i++)
+            {
+                v->adj[i]->removeEdge(v);
+            }
+
+            delete v;
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                if (vertices[i] == v)
+                {
+                    for (int j = i; j < vertexCount - 1; j++)
+                    {
+                        vertices[j] = vertices[j + 1];
+                    }
+                    vertexCount--;
+                    break;
+                }
+            }
+        }
+    }
+
+    void clear()
+    {
+        for (int i = 0; i < vertexCount; i++)
+        {
+            delete vertices[i];
+        }
+        vertexCount = 0;
+    }
+
+    void resetVisited()
+    {
+        for (int i = 0; i < vertexCount; i++)
+        {
+            vertices[i]->visited = false;
+        }
+    }
+
+    void dfs(ArticleVertex *v)
+    {
+        if (v == nullptr || v->visited)
+            return;
+
+        v->visited = true;
+        // cout << "Visited: " << v->article->title << endl;
+
+        for (int i = 0; i < v->adjCount; i++)
+        {
+            if (!v->adj[i]->visited)
+            {
+                cout << "- " << v->article->title << " → " << v->adj[i]->article->title << endl;
+                dfs(v->adj[i]);
+            }
+        }
+    }
+
+    ~ArticleGraph()
+    {
+        clear();
+    }
+};
+
+struct HashEntry
+{
+    string id;
+    Article *article;
+
+    HashEntry(string i, Article *a) : id(i), article(a) {}
+};
+
+struct HashTable
+{
+    HashEntry *table[MAX_ARTICLE];
+    int size;
+
+    HashTable(int s) : size(s)
+    {
+        for (int i = 0; i < size; i++)
+            table[i] = nullptr;
+    }
+
+    int hashFunction(string id)
+    {
+        int hash = 0;
+        for (char c : id)
+        {
+            hash += c;
+        }
+        return hash % size;
+    }
+
+    void insert(string id, Article *article)
+    {
+        int index = hashFunction(id);
+        while (table[index] != nullptr)
+        {
+            index = (index + 1) % size;
+        }
+        table[index] = new HashEntry(id, article);
+    }
+
+    Article *search(string id)
+    {
+        int index = hashFunction(id);
+        while (table[index] != nullptr)
+        {
+            if (table[index]->id == id)
+                return table[index]->article;
+            index = (index + 1) % size;
+        }
+        return nullptr;
+    }
+
+    void remove(string id)
+    {
+        int index = hashFunction(id);
+        while (table[index] != nullptr)
+        {
+            if (table[index]->id == id)
+            {
+                delete table[index];
+                table[index] = nullptr;
+                return;
+            }
+            index = (index + 1) % size;
+        }
+    }
+
+    void clear()
+    {
+        for (int i = 0; i < size; i++)
+        {
+            if (table[i] != nullptr)
+            {
+                delete table[i];
+                table[i] = nullptr;
+            }
+        }
+    }
+
+    ~HashTable()
+    {
+        clear();
+    }
+};
+
+struct StackNode
+{
+    Article *article;
+    StackNode *next;
+
+    StackNode(Article *a) : article(a), next(nullptr) {}
+};
+
+struct HistoryStack
+{
+    StackNode *top = nullptr;
+
+    void push(Article *a)
+    {
+        StackNode *newNode = new StackNode(a);
+        newNode->next = top;
+        top = newNode;
+    }
+
+    Article *pop()
+    {
+        if (isEmpty())
+            return nullptr;
+
+        StackNode *temp = top;
+        Article *result = top->article;
+        top = top->next;
+        delete temp;
+        return result;
+    }
+
+    Article *peek()
+    {
+        return isEmpty() ? nullptr : top->article;
+    }
+
+    bool isEmpty()
+    {
+        return top == nullptr;
+    }
+
+    ~HistoryStack()
+    {
+        while (!isEmpty())
+        {
+            pop();
+        }
+    }
+};
+
 struct TreeNode
 {
     string category;
@@ -279,65 +546,43 @@ struct CategoryTree
 
     void insert(const string &cat, Article *article)
     {
-        if (root == nullptr)
-        {
-            root = new TreeNode(cat);
-            root->articles[root->articleCount++] = article;
-        }
-        else
-        {
-            insertRec(root, cat, article);
-        }
+        root = insertRec(root, cat, article);
     }
 
-    void insertRec(TreeNode *node, const string &cat, Article *article)
+    TreeNode *insertRec(TreeNode *node, const string &cat, Article *article)
     {
+        if (node == nullptr)
+        {
+            TreeNode *newNode = new TreeNode(cat);
+            newNode->articles[newNode->articleCount++] = article;
+            return newNode;
+        }
+
         if (cat < node->category)
         {
-            if (node->left == nullptr)
-            {
-                node->left = new TreeNode(cat);
-                node->left->articles[node->left->articleCount++] = article;
-            }
-            else
-            {
-                insertRec(node->left, cat, article);
-            }
+            node->left = insertRec(node->left, cat, article);
         }
         else if (cat > node->category)
         {
-            if (node->right == nullptr)
-            {
-                node->right = new TreeNode(cat);
-                node->right->articles[node->right->articleCount++] = article;
-            }
-            else
-            {
-                insertRec(node->right, cat, article);
-            }
+            node->right = insertRec(node->right, cat, article);
         }
         else
         {
             node->articles[node->articleCount++] = article;
         }
-    }
-};
 
-struct GraphNode
-{
-    Article *article;
-    GraphNode *adj[MAX_ADJ];
-    int adjCount = 0;
+        return node;
+    }
 };
 
 Article articles[MAX_ARTICLE];
 int articlesCount = 0;
 
-Stack historyStack;
+HistoryStack historyStack;
 CommentQueue commentQueue;
-
-/* Begin helper functions */
-/* End helper functions */
+HashTable hashTable(MAX_ARTICLE);
+ArticleGraph articleGraph;
+CategoryTree categoryTree;
 
 /* Begin visitor handler functions */
 // 1. Lihat Semua Artikel
@@ -435,22 +680,62 @@ int findArticleIndex(string keyword)
     return -1;
 }
 
+void previewArticle(Article *a)
+{
+    cout << endl
+         << "Judul: " << a->title << endl;
+    cout << "ID: " << a->id << endl;
+    cout << "Kategori: " << a->category << endl;
+    cout << "Jumlah Komentar: " << a->commentCount << endl;
+}
+
 void readArticle(Article *a)
 {
     cout << endl
-         << "[ID: " << a->id << "] " << a->title << endl;
-    cout << "Kategori : " << a->category << endl;
-    cout << "Topik Terkait: ";
+         << "--- Isi Artikel ---" << endl;
+    cout << a->content << endl;
+    cout << "----------------------------------------" << endl;
+}
 
-    for (int i = 0; i < a->relatedCount; i++)
+int binarySearchArticle(string title)
+{
+    int left = 0;
+    int right = articlesCount - 1;
+
+    while (left <= right)
     {
-        cout << a->relatedIds[i];
-        if (i < a->relatedCount - 1)
-            cout << ", ";
+        int mid = left + (right - left) / 2;
+
+        if (articles[mid].title == title)
+            return mid;
+        else if (articles[mid].title < title)
+            left = mid + 1;
+        else
+            right = mid - 1;
     }
-    cout << endl
-         << "Isi:" << endl
-         << a->content << endl;
+    return -1;
+}
+
+Article *searchArticle(string keyword)
+{
+    Article *article = nullptr;
+
+    if (isArticleId(keyword))
+    {
+        article = hashTable.search(keyword);
+    }
+    else
+    {
+        bubbleSortArticles(1);
+        int index = binarySearchArticle(keyword);
+        if (index == -1)
+        {
+            return nullptr;
+        }
+        article = &articles[index];
+    }
+
+    return article;
 }
 
 void searchAndReadArticle()
@@ -464,18 +749,26 @@ void searchAndReadArticle()
     cout << "--- Cari dan Baca Artikel ---" << endl;
 
     string keyword = inputData("Masukkan ID / Judul Artikel");
-    int index = findArticleIndex(keyword);
+    Article *article = searchArticle(keyword);
 
-    if (index == -1)
+    if (article == nullptr)
     {
         cout << "Artikel tidak ditemukan." << endl;
         return;
     }
 
-    Article *a = &articles[index];
+    previewArticle(article);
 
-    readArticle(a);
-    historyStack.push(a);
+    bool isRead = inputYN("Baca artikel?");
+
+    if (!isRead)
+    {
+        cout << "Artikel tidak dibaca." << endl;
+        return;
+    }
+
+    readArticle(article);
+    historyStack.push(article);
 }
 
 // 4. Tambahkan Komentar
@@ -490,14 +783,14 @@ void addComment()
     cout << "--- Tambahkan Komentar ---" << endl;
     string articleId = inputData("Masukkan ID Artikel: ");
 
-    int index = findArticleIndex(articleId);
-    if (index == -1)
+    Article *article = hashTable.search(articleId);
+    if (article == nullptr)
     {
-        cout << "Artikel dengan ID tersebut tidak ditemukan." << endl;
+        cout << "Artikel tidak ditemukan." << endl;
         return;
     }
 
-    string text = inputData("Masukkan komentar Anda: ");
+    string text = inputData("Masukkan komentar Anda");
     commentQueue.enqueueComment(articleId, text);
     cout << "Komentar berhasil ditambahkan ke antrian." << endl;
 }
@@ -730,9 +1023,7 @@ void addProcessedCommentToArticle(string articleId, string commentText)
     if (idx == -1)
         return;
 
-    CommentNode *newComment = new CommentNode;
-    newComment->text = commentText;
-    newComment->next = nullptr;
+    CommentNode *newComment = new CommentNode(articleId, commentText);
 
     if (articles[idx].commentsHead == nullptr)
     {

@@ -90,6 +90,10 @@ Baca artikel? (Y/N): Y
 
 [Isi Artikel Ditampilkan]
 
+Tampilkan komentar? (Y/N): Y
+
+[Isi komentar ditampilkan]
+
 Masukkan ke riwayat bacaan... Berhasil.
 ```
 
@@ -139,6 +143,52 @@ Hasil DFS:
 
 Ingin baca A002? (Y/N): Y
 Menampilkan: Konsep Stack dan Queue
+--- Isi Artikel ---
+Blah blah blah
+-----------------------
+
+Lanjut jelajahi topik terkait A002?> (Y/N): Y
+
+Hasil DFS:
+- A002 → A003
+
+Ingin baca A003? (Y/N): Y
+
+Menampilkan: Konsep Tree
+--- Isi Artikel ---
+Blah blah blah
+-----------------------
+
+Tidak ada topik terkait selanjutnya untuk dijelajahi.
+```
+
+#### 6. Jelajahi Topik Terkait (Alternatif)
+
+(Menggunakan: `Graph`, `DFS rekursif`)
+
+```
+--- Topik Terkait ---
+Masukkan ID Artikel: A001
+
+Hasil DFS:
+- A001 → A002
+Judul: Konsep Tree
+Kategori: Struktur Hirarki
+Jumlah Komentar: 0
+
+--- Isi Artikel ---
+Blah blah blah blah blah blah blah.
+
+Lanjut Jelajah? (Y/N): y
+- A002 → A003
+Judul: Konsep Stack
+Kategori: Struktur Linear
+Jumlah Komentar: 1
+
+--- Isi Artikel ---
+Blah blah blah blah blah blah blah.
+
+Semua artikel terkait sudah dijelajahi.
 ```
 
 ---
@@ -197,6 +247,38 @@ Topik Terkait (pisahkan koma): A001,A003
 
 Artikel berhasil ditambahkan!
 ```
+
+#### 2. Tambah Artikel (Alternatif)
+
+(Menggunakan: `Struct`, `Hash Table`, `Array`, `Graph`)
+
+```
+--- Tambah Artikel Baru ---
+ID Artikel: A004
+Judul     : Tree dalam File System
+Isi       : Tree digunakan untuk struktur direktori...
+Kategori  : Struktur Hirarki
+Artikel berhasil ditambahkan!
+
+--- Hubungkan dengan Topik Terkait ---
+Jumlah Topik Terkait (Ketik 0 Jika Tidak Ada): 3
+- ID Topik Terkait 1: A001
+Berhasil mengaitkan topik: A004 <-> A001
+- ID Topik Terkait 2: A003
+Berhasil mengaitkan topik: A004 <-> A003
+- ID Topik Terkait 3: A005
+Artikel dengan ID A005 tidak ditemukan.
+- ID Topik Terkait 3: A002
+Berhasil mengaitkan topik: A004 <-> A002
+
+Artikel berhasil dihubungkan dengan 3 topik terkait!
+
+```
+
+Catatan:
+
+- Jumlah maksimal artikel terkait adalah 10.
+- Terdapat validasi dan pengecekan apakah artikel dengan id yang sama seperti yang dimasukkan ada.
 
 ---
 

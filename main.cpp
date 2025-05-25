@@ -32,7 +32,7 @@ void outputHeaderEditor()
     cout << "1. Lihat Semua Artikel" << endl;
     cout << "2. Tambah Artikel" << endl;
     cout << "3. Cari dan Edit Artikel" << endl;
-    cout << "4. Urutkan Artikel" << endl;
+    cout << "4. Lihat Tampilan Terurut" << endl;
     cout << "5. Komentar Masuk" << endl;
     cout << "0. Kembali" << endl;
     cout << endl;
@@ -46,7 +46,7 @@ void outputHeaderVisitor()
     cout << "======================================" << endl;
     cout << "              -- Pengunjung --" << endl;
     cout << "1. Lihat Semua Artikel" << endl;
-    cout << "2. Urutkan Artikel" << endl;
+    cout << "2. Lihat Tampilan Terurut" << endl;
     cout << "3. Cari dan Baca Artikel" << endl;
     cout << "4. Tambahkan Komentar" << endl;
     cout << "5. Lihat Riwayat Bacaan" << endl;
@@ -60,7 +60,6 @@ string inputData(string label)
 {
     cout << label << "> ";
     string data;
-    cin.ignore();
     getline(cin, data);
 
     while (data.empty())
@@ -87,6 +86,7 @@ char inputChar(string label)
         cin >> ch;
     }
 
+    cin.ignore(1000, '\n');
     return ch;
 }
 
@@ -105,6 +105,7 @@ int inputMenu()
         }
         else
         {
+            cin.ignore(1000, '\n');
             return choice;
         }
     }
@@ -124,7 +125,28 @@ bool inputYN(string label)
             return false;
 
         cout << "Input tidak valid. Harap masukkan Y atau N." << endl;
+        cin.ignore(1000, '\n');
     }
+}
+
+int inputInteger(string label)
+{
+    int value;
+    cout << label << "> ";
+    cin >> value;
+
+    while (cin.fail() || value < 0)
+    {
+        cin.clear();
+        cin.ignore(1000, '\n');
+        cout << "Input tidak valid. Masukkan angka positif." << endl;
+        cout << label << "> ";
+        cin >> value;
+    }
+
+    cin.ignore(1000, '\n');
+
+    return value;
 }
 
 bool isValidArticleIdFormat(const string &id)
@@ -212,7 +234,7 @@ struct CommentQueue
     {
         if (frontComment == nullptr)
         {
-            cout << "Tidak ada komentar untuk diproses." << endl;
+            cout << "Tidak ada komentar untuk dihapus." << endl;
             return;
         }
 
@@ -223,7 +245,7 @@ struct CommentQueue
             rearComment = nullptr;
         }
         delete temp;
-        cout << "Komentar berhasil diproses dan dihapus dari antrian." << endl;
+        // cout << "Komentar berhasil diproses dan dihapus dari antrian." << endl;
     }
 
     CommentNode *peek()
@@ -246,11 +268,45 @@ struct Article
     string title;
     string content;
     string category;
-    // string relatedIds[MAX_ADJ];
-    // int relatedCount;
     int commentCount = 0;
 
     CommentNode *commentsHead = nullptr;
+
+    void showComments()
+    {
+        CommentNode *comment = commentsHead;
+        if (comment == nullptr)
+        {
+            cout << "(Tidak ada komentar untuk artikel ini)." << endl;
+        }
+        else
+        {
+            while (comment != nullptr)
+            {
+                cout << "- " << comment->text << endl;
+                comment = comment->next;
+            }
+        }
+    }
+
+    void addComment(string text)
+    {
+
+        CommentNode *newComment = new CommentNode(id, text);
+
+        if (commentsHead == nullptr)
+        {
+            commentsHead = newComment;
+        }
+        else
+        {
+            CommentNode *temp = commentsHead;
+            while (temp->next != nullptr)
+                temp = temp->next;
+            temp->next = newComment;
+        }
+        commentCount++;
+    }
 };
 
 struct ArticleVertex
@@ -285,7 +341,54 @@ struct ArticleVertex
             }
         }
     }
+
+    void showRelated()
+    {
+        cout << "Artikel terkait untuk " << article->title << ":" << endl;
+        for (int i = 0; i < adjCount; i++)
+        {
+            cout << "- [ID: " << adj[i]->article->id << "] " << adj[i]->article->title << endl;
+        }
+    }
+
+    Article *getFirstRelatedArticle()
+    {
+        if (adjCount > 0)
+            return adj[0]->article;
+        return nullptr;
+    }
+
+    bool isRelated(Article *a)
+    {
+        for (int i = 0; i < adjCount; i++)
+        {
+            if (adj[i]->article == a)
+                return true;
+        }
+        return false;
+    }
 };
+
+int compareWords(const string &a, const string &b)
+{
+    int len = min(a.length(), b.length());
+    for (int i = 0; i < len; ++i)
+    {
+        char ca = tolower(a[i]);
+        char cb = tolower(b[i]);
+
+        if (ca < cb)
+            return -1;
+        if (ca > cb)
+            return 1;
+    }
+
+    if (a.length() < b.length())
+        return -1;
+    if (a.length() > b.length())
+        return 1;
+    return 0;
+}
 
 struct ArticleGraph
 {
@@ -538,6 +641,19 @@ struct TreeNode
         articleCount = 0;
         left = right = nullptr;
     }
+
+    void showAllArticles()
+    {
+        if (!articleCount)
+        {
+            cout << "(Tidak ada artikel pada kategori ini)." << endl;
+            return;
+        }
+        for (int i = 0; i < articleCount; i++)
+        {
+            cout << "- " << articles[i]->id << " - " << articles[i]->title << endl;
+        }
+    }
 };
 
 struct CategoryTree
@@ -558,11 +674,12 @@ struct CategoryTree
             return newNode;
         }
 
-        if (cat < node->category)
+        int cmp = compareWords(cat, node->category);
+        if (cmp < 0)
         {
             node->left = insertRec(node->left, cat, article);
         }
-        else if (cat > node->category)
+        else if (cmp > 0)
         {
             node->right = insertRec(node->right, cat, article);
         }
@@ -572,6 +689,58 @@ struct CategoryTree
         }
 
         return node;
+    }
+
+    TreeNode *search(const string &cat)
+    {
+        return searchRec(root, cat);
+    }
+
+    TreeNode *searchRec(TreeNode *node, const string &cat)
+    {
+        if (node == nullptr || node->category == cat)
+            return node;
+
+        int cmp = compareWords(cat, node->category);
+        if (cmp < 0)
+            return searchRec(node->left, cat);
+        else
+            return searchRec(node->right, cat);
+    }
+
+    void inorder(TreeNode *node)
+    {
+        if (node == nullptr)
+            return;
+
+        inorder(node->left);
+        cout << "- " << node->category << endl;
+        inorder(node->right);
+    }
+
+    bool isEmpty()
+    {
+        return root == nullptr;
+    }
+
+    void showAll()
+    {
+        inorder(root);
+    }
+
+    void clearTree(TreeNode *node)
+    {
+        if (node == nullptr)
+            return;
+        clearTree(node->left);
+        clearTree(node->right);
+        delete node;
+    }
+
+    void clear()
+    {
+        clearTree(root);
+        root = nullptr;
     }
 };
 
@@ -606,6 +775,14 @@ void showAllArticles()
 }
 
 // 2. Urutkan Artikel
+void copyArray(Article source[], Article destination[], int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        destination[i] = source[i];
+    }
+}
+
 int inputMenuSort()
 {
     cout << "--- Urutkan Artikel ---" << endl;
@@ -619,7 +796,7 @@ int inputMenuSort()
     while (pilihan < 1 || pilihan > 3)
     {
         cout << "Pilihan tidak valid. Masukkan angka 1 - 3: ";
-        cin >> pilihan;
+        pilihan = inputMenu();
     }
 
     return pilihan;
@@ -628,26 +805,28 @@ int inputMenuSort()
 bool shouldSwap(const Article &a, const Article &b, int option)
 {
     if (option == 1)
-        return a.title > b.title;
+        // return a.title > b.title;
+        return compareWords(a.title, b.title) > 0;
     else if (option == 2)
-        return a.title < b.title;
+        // return a.title < b.title;
+        return compareWords(a.title, b.title) < 0;
     else if (option == 3)
         return a.id > b.id;
 
     return false;
 }
 
-void bubbleSortArticles(int option)
+void bubbleSortArticles(Article a[], int count, int option)
 {
-    for (int i = 0; i < articlesCount - 1; i++)
+    for (int i = 0; i < count - 1; i++)
     {
-        for (int j = 0; j < articlesCount - i - 1; j++)
+        for (int j = 0; j < count - i - 1; j++)
         {
-            if (shouldSwap(articles[j], articles[j + 1], option))
+            if (shouldSwap(a[j], a[j + 1], option))
             {
-                Article temp = articles[j];
-                articles[j] = articles[j + 1];
-                articles[j + 1] = temp;
+                Article temp = a[j];
+                a[j] = a[j + 1];
+                a[j + 1] = temp;
             }
         }
     }
@@ -661,10 +840,20 @@ void sortArticles()
         return;
     }
 
+    Article articlesCopy[MAX_ARTICLE];
+    copyArray(articles, articlesCopy, articlesCount);
+
     int option = inputMenuSort();
-    bubbleSortArticles(option);
-    cout << "Artikel berhasil diurutkan." << endl;
-    showAllArticles();
+    bubbleSortArticles(articlesCopy, articlesCount, option);
+
+    cout << "--- Menampilkan Artikel Terurut ---" << endl;
+    for (int i = 0; i < articlesCount; i++)
+    {
+        cout << "[" << i + 1 << "] ";
+        cout << "[ID: " << articlesCopy[i].id << "] ";
+        cout << articlesCopy[i].title << endl;
+    }
+    cout << "Total artikel: " << articlesCount << endl;
 }
 
 // 3. Cari dan Baca Artikel
@@ -726,8 +915,7 @@ Article *searchArticle(string keyword)
     }
     else
     {
-        bubbleSortArticles(1);
-        int index = binarySearchArticle(keyword);
+        int index = findArticleIndex(keyword);
         if (index == -1)
         {
             return nullptr;
@@ -738,6 +926,7 @@ Article *searchArticle(string keyword)
     return article;
 }
 
+// TODO: Implementasi komentar artikel
 void searchAndReadArticle()
 {
     if (articlesCount == 0)
@@ -769,6 +958,13 @@ void searchAndReadArticle()
 
     readArticle(article);
     historyStack.push(article);
+
+    bool isShowComments = inputYN("Tampilkan komentar artikel?");
+    if (isShowComments)
+    {
+        cout << "--- Komentar Artikel ---" << endl;
+        article->showComments();
+    }
 }
 
 // 4. Tambahkan Komentar
@@ -822,7 +1018,8 @@ void showReadingHistory()
         if (prev)
         {
             cout << "Kembali ke artikel: " << prev->title << endl;
-            cout << prev->content << endl;
+            readArticle(prev);
+            // cout << prev->content << endl;
             // showArticleComments(*prev);
         }
         else
@@ -833,7 +1030,12 @@ void showReadingHistory()
 }
 
 // 6. Jelajahi Topik Terkait
-// bool visited[MAX_ARTICLE];
+void readFullArticle(Article *article)
+{
+    previewArticle(article);
+    readArticle(article);
+    historyStack.push(article);
+}
 
 // Procedure DFS(node):
 //     visited[node] ← true
@@ -842,58 +1044,65 @@ void showReadingHistory()
 //     For each neighbor in Adjacent(node):
 //         If not visited[neighbor]:
 //             DFS(neighbor)
-void dfsExplore(Article *article)
+void dfsExplore(ArticleVertex *root)
 {
-    // if (article == nullptr)
-    //     return;
+    if (root == nullptr)
+    {
+        return;
+    }
 
-    // visited[findArticleIndex(article->id)] = true;
+    root->visited = true;
+    for (int i = 0; i < root->adjCount; i++)
+    {
+        if (!root->adj[i]->visited)
+        {
+            cout << "- " << root->article->id << " -> " << root->adj[i]->article->id << endl;
+            readFullArticle(root->adj[i]->article);
+            cout << endl;
 
-    // for (int i = 0; i < article->relatedCount; ++i)
-    // {
-    //     Article* next = searchArticleById(article->related[i]);
-    //     if (next && !visited[getArticleIndex(next->id)])
-    //     {
-    //         cout << "- " << article->id << " → " << next->id << "\n";
-    //         dfsExplore(next);
-    //     }
-    // }
+            bool isContinue = inputYN("Lanjut Jelajah?");
+            if (!isContinue)
+            {
+                cout << "Eksplorasi dihentikan." << endl;
+                return;
+            }
+
+            dfsExplore(root->adj[i]);
+        }
+    }
 }
 
 void exploreRelatedTopics()
 {
-    // string targetId = inputData("Masukkan ID Artikel");
-    // Article* root = searchArticleById(targetId);
+    if (articleGraph.vertexCount == 0)
+    {
+        cout << "Belum ada artikel terkait yang tersedia." << endl;
+        return;
+    }
+    string targetId = inputData("Masukkan ID Artikel");
+    Article *article = hashTable.search(targetId);
+    ArticleVertex *vertex = articleGraph.findVertex(article);
 
-    // if (root == NULL)
-    // {
-    //     cout << "Artikel tidak ditemukan.\n";
-    //     return;
-    // }
+    if (vertex == NULL)
+    {
+        cout << "Artikel tidak ditemukan.\n";
+        return;
+    }
 
-    // // Reset visited array
-    // for (int i = 0; i < MAX_ARTICLES; ++i)
-    //     visited[i] = false;
+    Article *firstRelated = vertex->getFirstRelatedArticle();
+    if (firstRelated == nullptr)
+    {
+        cout << endl
+             << "Tidak ada artikel terkait untuk " << article->id << "." << endl;
+        return;
+    }
 
-    // cout << "\nHasil DFS:\n";
-    // dfsExplore(root);
-
-    // string bacaId = inputData("Ingin baca artikel tertentu? Masukkan ID (kosongkan untuk batal)");
-    // if (bacaId.empty())
-    //     return;
-
-    // Article* selected = searchArticleById(bacaId);
-    // if (selected)
-    // {
-    //     cout << "\nMenampilkan: " << selected->title << "\n";
-    //     cout << selected->content << "\n";
-    //     readHistory.push(selected);
-    //     showArticleComments(*selected);
-    // }
-    // else
-    // {
-    //     cout << "Artikel tidak ditemukan.\n";
-    // }
+    articleGraph.resetVisited();
+    cout << endl
+         << "Hasil DFS:" << endl;
+    dfsExplore(vertex);
+    cout << endl
+         << "Eksplorasi selesai." << endl;
 }
 
 // 7. Jelajahi Kategori Artikel
@@ -920,77 +1129,207 @@ void getUniqueCategories(Article articles[], int count, string uniqueCategories[
 
 void exploreCategories()
 {
-    cout << "--- Kategori Artikel ---\n\n";
-
-    // Inisialisasi array kategori unik
-    string uniqueCategories[MAX_ARTICLE];
-    int categoryCount = 0;
-
-    // Kumpulkan semua kategori yang unik
-    getUniqueCategories(articles, articlesCount, uniqueCategories, categoryCount);
-
-    // Tampilkan kategori beserta artikel-artikelnya
-    for (int i = 0; i < categoryCount; i++)
+    if (categoryTree.isEmpty())
     {
-        cout << "- " << uniqueCategories[i] << endl;
-        for (int j = 0; j < articlesCount; j++)
-        {
-            if (articles[j].category == uniqueCategories[i])
-            {
-                cout << "  - " << articles[j].id << " - " << articles[j].title << endl;
-            }
-        }
+        cout << "Belum ada kategori artikel." << endl;
+        return;
+    }
+    cout << "--- Kategori Artikel ---" << endl;
+    categoryTree.showAll();
+
+    string inputCategory = inputData("Masukkan nama kategori yang ingin dijelajahi");
+
+    TreeNode *categoryNode = categoryTree.search(inputCategory);
+    if (categoryNode == nullptr)
+    {
+        cout << "Kategori '" << inputCategory << "' tidak ditemukan." << endl;
+        return;
     }
 
-    // Input nama kategori
-    string inputCategory = inputData("Masukkan kategori");
-
-    // Tampilkan artikel pada kategori tersebut
-    cout << "Menampilkan artikel:\n";
-    bool found = false;
-    for (int i = 0; i < articlesCount; i++)
-    {
-        if (articles[i].category == inputCategory)
-        {
-            cout << "- " << articles[i].id << " - " << articles[i].title << endl;
-            found = true;
-        }
-    }
-
-    if (!found)
-    {
-        cout << "(Tidak ada artikel dalam kategori ini)" << endl;
-    }
+    cout << "--- Menampilkan Artikel ---" << endl;
+    categoryNode->showAllArticles();
 }
-
 /* End visitor handler functions */
 
 /* Begin editor handler functions */
 // 2. Tambah Artikel
 Article createArticle()
 {
-    // Article newArticle;
-    // newArticle.id = inputData("Masukkan ID Artikel");
-    // newArticle.title = inputData("Masukkan Judul Artikel");
-    // newArticle.content = inputData("Masukkan Isi Artikel");
-    // newArticle.category = inputData("Masukkan Kategori Artikel");
-    // // newArticle.relatedCount = input;
-    // newArticle.commentCount = 0;
+    Article newArticle;
+    newArticle.id = inputId("Masukkan ID Artikel");
+    if (hashTable.search(newArticle.id) != nullptr)
+    {
+        cout << "ID Artikel sudah ada. Silakan gunakan ID yang berbeda." << endl;
+        return createArticle();
+    }
 
-    // return newArticle;
+    newArticle.title = inputData("Masukkan Judul Artikel");
+    newArticle.content = inputData("Masukkan Isi Artikel");
+    newArticle.category = inputData("Masukkan Kategori Artikel");
+    newArticle.commentCount = 0;
+
+    return newArticle;
 }
+
+int inputRelatedCount()
+{
+    string label = "Masukkan jumlah artikel terkait (0 - " + to_string(MAX_ADJ) + ")";
+    int count = inputInteger(label);
+
+    if (count < 0 || count > MAX_ADJ)
+    {
+        cout << "Jumlah tidak valid." << endl;
+        return inputRelatedCount();
+    }
+
+    if (articleGraph.vertexCount - 1 < count)
+    {
+        cout << "Jumlah terlalu besar. Jumlah artikel yang dapat dikaitkan hanya " << to_string(articleGraph.vertexCount - 1) << endl;
+        return inputRelatedCount();
+    }
+
+    return count;
+}
+
+void addArticleToAllStructures(Article *article)
+{
+    categoryTree.insert(article->category, article);
+    hashTable.insert(article->id, article);
+    articleGraph.addArticle(article);
+}
+
+void connectRelatedArticles(Article *article)
+{
+    ArticleVertex *vertex = articleGraph.findVertex(article);
+
+    cout << "--- Hubungkan Artikel Terkait ---" << endl;
+    int relatedCount = inputRelatedCount();
+
+    if (relatedCount == 0)
+    {
+        cout << "Tidak ada artikel terkait yang akan dihubungkan." << endl;
+        return;
+    }
+
+    int count = 0;
+    while (count < relatedCount)
+    {
+        string relatedId = inputId("Masukkan ID Artikel Terkait " + to_string(count + 1));
+        Article *relatedArticle = hashTable.search(relatedId);
+
+        if (relatedArticle == nullptr)
+        {
+            cout << "Artikel dengan ID " << relatedId << " tidak ditemukan." << endl;
+            continue;
+        }
+
+        if (relatedArticle == article)
+        {
+            cout << "Tidak dapat menghubungkan artikel dengan dirinya sendiri." << endl;
+            continue;
+        }
+
+        if (vertex->isRelated(relatedArticle))
+        {
+            cout << "Artikel ini sudah terkait dengan " << relatedArticle->title << "." << endl;
+            continue;
+        }
+
+        articleGraph.addEdge(article, relatedArticle);
+        count++;
+
+        cout << "Artikel " << article->title << " berhasil dihubungkan dengan " << relatedArticle->title << "." << endl;
+    }
+
+    cout << endl
+         << "Total artikel terkait yang dihubungkan: " << count << endl;
+}
+
 void addArticle()
 {
-    // if (articlesCount >= MAX_ARTICLE)
-    // {
-    //     cout << "Tidak dapat menambah artikel. Kapasitas maksimum tercapai." << endl;
-    //     return;
-    // }
+    if (articlesCount >= MAX_ARTICLE)
+    {
+        cout << "Tidak dapat menambah artikel. Kapasitas maksimum tercapai." << endl;
+        return;
+    }
+
+    cout << "--- Tambah Artikel ---" << endl;
+    Article newArticle = createArticle();
+    articles[articlesCount++] = newArticle;
+    Article *articlePtr = &articles[articlesCount - 1];
+    addArticleToAllStructures(articlePtr);
+
+    cout << endl
+         << "Artikel berhasil ditambahkan." << endl;
+
+    if (articleGraph.vertexCount > 1)
+    {
+        connectRelatedArticles(articlePtr);
+    }
+}
+
+void generateDummyArticles()
+{
+    string randomIds[15] = {
+        "A001", "A002", "A003", "A004", "A005",
+        "A006", "A007", "A008", "A009", "A010",
+        "A011", "A012", "A013", "A014", "A015"};
+    string randomTitles[15] = {
+        "Artikel Pertama", "Artikel Kedua", "Artikel Ketiga",
+        "Artikel Keempat", "Artikel Kelima", "Artikel Keenam",
+        "Artikel Ketujuh", "Artikel Kedelapan", "Artikel Kesembilan",
+        "Artikel Kesepuluh", "Artikel Kesebelas", "Artikel Keduabelas",
+        "Artikel Ketigabelas", "Artikel Keempatbelas", "Artikel Kelimabelas"};
+    string randomContents[15] = {
+        "Ini adalah isi artikel pertama.",
+        "Ini adalah isi artikel kedua.",
+        "Ini adalah isi artikel ketiga.",
+        "Ini adalah isi artikel keempat.",
+        "Ini adalah isi artikel kelima.",
+        "Ini adalah isi artikel keenam.",
+        "Ini adalah isi artikel ketujuh.",
+        "Ini adalah isi artikel kedelapan.",
+        "Ini adalah isi artikel kesembilan.",
+        "Ini adalah isi artikel kesepuluh.",
+        "Ini adalah isi artikel kesebelas.",
+        "Ini adalah isi artikel keduabelas.",
+        "Ini adalah isi artikel ketigabelas.",
+        "Ini adalah isi artikel keempatbelas.",
+        "Ini adalah isi artikel kelimabelas."};
+    string randomCategories[5] = {"Teknologi", "Kesehatan", "Olahraga", "Politik", "Ekonomi"};
+
+    for (int i = 0; i < 15; i++)
+    {
+        Article dummyArticle;
+        dummyArticle.id = randomIds[i];
+        dummyArticle.title = randomTitles[i];
+        dummyArticle.content = randomContents[i];
+        dummyArticle.category = randomCategories[i % 5];
+        dummyArticle.commentCount = 0;
+
+        articles[articlesCount++] = dummyArticle;
+        addArticleToAllStructures(&articles[articlesCount - 1]);
+    }
 }
 
 // 3. Cari dan Edit Artikel
 void editArticle(Article *article)
 {
+    cout << "[ID: " << article->id << "] " << article->title << endl;
+
+    bool isEditTitle = inputYN("Edit judul?");
+    if (isEditTitle)
+    {
+        article->title = inputData("Masukkan Judul Baru");
+    }
+
+    bool isEditContent = inputYN("Edit isi artikel?");
+    if (isEditContent)
+    {
+        article->content = inputData("Masukkan Isi Baru");
+    }
+
+    cout << "Artikel berhasil diperbarui." << endl;
 }
 
 void searchAndEditArticle()
@@ -1004,38 +1343,46 @@ void searchAndEditArticle()
     cout << "--- Cari dan Edit Artikel ---" << endl;
 
     string keyword = inputData("Masukkan ID / Judul Artikel");
-    int index = findArticleIndex(keyword);
+    Article *article = searchArticle(keyword);
 
-    if (index == -1)
+    if (article == nullptr)
     {
         cout << "Artikel tidak ditemukan." << endl;
         return;
     }
 
-    Article *a = &articles[index];
-    editArticle(a);
+    previewArticle(article);
+    editArticle(article);
 }
 
 // 5. Komentar Masuk
 void addProcessedCommentToArticle(string articleId, string commentText)
 {
-    int idx = findArticleIndex(articleId);
-    if (idx == -1)
+    Article *article = hashTable.search(articleId);
+    if (article == nullptr)
+    {
+        cout << "Artikel dengan ID " << articleId << " tidak ditemukan." << endl;
         return;
-
-    CommentNode *newComment = new CommentNode(articleId, commentText);
-
-    if (articles[idx].commentsHead == nullptr)
-    {
-        articles[idx].commentsHead = newComment;
     }
-    else
+
+    article->addComment(commentText);
+}
+
+int inputCommentAction()
+{
+    cout << "Pilih aksi:" << endl;
+    cout << "1. Proses komentar" << endl;
+    cout << "2. Hapus komentar" << endl;
+    cout << "0. Kembali" << endl;
+
+    int choice = inputMenu();
+    while (choice < 0 || choice > 2)
     {
-        CommentNode *temp = articles[idx].commentsHead;
-        while (temp->next != nullptr)
-            temp = temp->next;
-        temp->next = newComment;
+        cout << "Pilihan tidak valid. Masukkan angka 0 - 2." << endl;
+        choice = inputMenu();
     }
+
+    return choice;
 }
 
 void showPendingComments()
@@ -1046,33 +1393,34 @@ void showPendingComments()
         return;
     }
 
-    // while (commentQueue.frontComment != nullptr)
-    // {
-    // cout << "\n--- Antrian Komentar ---\n";
-    // cout << "Artikel ID: " << commentQueue.frontComment->articleId << endl;
-    // cout << "Komentar   : " << commentQueue.frontComment->text << endl;
+    while (commentQueue.frontComment != nullptr)
+    {
+        cout << "\n--- Komentar Masuk ---\n";
+        cout << "Artikel ID: " << commentQueue.frontComment->articleId << endl;
+        cout << "Komentar   : " << commentQueue.frontComment->text << endl;
 
-    // bool process = inputYN("Proses komentar ini? (Y/N): ");
-    // if (process)
-    // {
-    //     // Tambahkan komentar ke artikel terkait
-    //     addProcessedCommentToArticle(commentsFront->articleId, commentsFront->text);
+        int action = inputCommentAction();
 
-    //     // Hapus dari antrian
-    //     CommentQueueNode *toDelete = commentsFront;
-    //     commentsFront = commentsFront->next;
-    //     if (commentsFront == nullptr)
-    //         commentsRear = nullptr;
+        switch (action)
+        {
+        case 1:
+            addProcessedCommentToArticle(commentQueue.frontComment->articleId, commentQueue.frontComment->text);
+            commentQueue.dequeueComment();
+            cout << "Komentar telah diproses dan ditambahkan ke artikel." << endl;
+            break;
+        case 2:
+            commentQueue.dequeueComment();
+            cout << "Komentar telah dihapus dari antrian." << endl;
+            break;
+        case 0:
+            break;
+        default:
+            break;
+        }
 
-    //     delete toDelete;
-    //     cout << "Komentar telah diproses dan ditambahkan ke artikel.\n";
-    // }
-    // else
-    // {
-    //     cout << "Komentar tidak diproses.\n";
-    //     break;
-    // }
-    // }
+        if (action == 0)
+            break;
+    }
 }
 
 /* End editor handler functions */
@@ -1155,6 +1503,7 @@ void editorPage()
 
 int main()
 {
+    generateDummyArticles();
     int choice;
 
     do

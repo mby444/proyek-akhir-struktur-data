@@ -2,6 +2,8 @@
 #include <string>
 #include <cstdint>
 #include <cctype>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -18,7 +20,7 @@ void outputMainHeader()
     cout << "======================================" << endl;
     cout << "1. Masuk Sebagai Pengunjung" << endl;
     cout << "2. Masuk Sebagai Editor" << endl;
-    cout << "0. Keluar" << endl;
+    cout << "0. Kembali" << endl;
     cout << endl;
 }
 
@@ -52,7 +54,7 @@ void outputHeaderVisitor()
     cout << "5. Lihat Riwayat Bacaan" << endl;
     cout << "6. Jelajahi Topik Terkait" << endl;
     cout << "7. Jelajahi Kategori Artikel" << endl;
-    cout << "0. Keluar" << endl;
+    cout << "0. Simpan dan Keluar" << endl;
     cout << endl;
 }
 
@@ -1425,6 +1427,169 @@ void showPendingComments()
 
 /* End editor handler functions */
 
+/* Begin Database Functions */
+void loadAllDataFromFiles()
+{
+    articlesCount = 0;
+    hashTable.clear();
+    articleGraph.clear();
+    historyStack.~HistoryStack();
+    commentQueue = CommentQueue(); // reset queue
+
+    // 1. Artikel & komentar
+    ifstream fin("articles.txt");
+    string line;
+    Article *current = nullptr;
+
+    while (getline(fin, line))
+    {
+        if (line == "--")
+        {
+            if (current)
+            {
+                // masukkan ke struktur data
+                articles[articlesCount++] = *current;
+                hashTable.insert(current->id, &articles[articlesCount - 1]);
+                articleGraph.addArticle(&articles[articlesCount - 1]);
+                categoryTree.insert(current->category, &articles[articlesCount - 1]);
+                delete current;
+                current = nullptr;
+            }
+            continue;
+        }
+
+        if (line.rfind("KOMENTAR:", 0) == 0)
+        {
+            string text = line.substr(9);
+            current->addComment(text);
+        }
+        else
+        {
+            stringstream ss(line);
+            string id, title, content, category, commentCountStr;
+            getline(ss, id, '|');
+            getline(ss, title, '|');
+            getline(ss, content, '|');
+            getline(ss, category, '|');
+            getline(ss, commentCountStr);
+
+            current = new Article;
+            current->id = id;
+            current->title = title;
+            current->content = content;
+            current->category = category;
+            current->commentCount = stoi(commentCountStr);
+        }
+    }
+    fin.close();
+
+    // 2. Antrian komentar
+    fin.open("pending_comments.txt");
+    while (getline(fin, line))
+    {
+        stringstream ss(line);
+        string articleId, text;
+        getline(ss, articleId, '|');
+        getline(ss, text);
+        commentQueue.enqueueComment(articleId, text);
+    }
+    fin.close();
+
+    // 3. Riwayat bacaan
+    fin.open("history.txt");
+    while (getline(fin, line))
+    {
+        Article *a = hashTable.search(line);
+        if (a)
+            historyStack.push(a);
+    }
+    fin.close();
+
+    // 4. Relasi antar artikel
+    fin.open("relations.txt");
+    while (getline(fin, line))
+    {
+        stringstream ss(line);
+        string sourceId, rels;
+        getline(ss, sourceId, '|');
+        getline(ss, rels);
+
+        Article *source = hashTable.search(sourceId);
+        if (!source)
+            continue;
+
+        stringstream rs(rels);
+        string targetId;
+        while (getline(rs, targetId, ','))
+        {
+            Article *target = hashTable.search(targetId);
+            if (target)
+            {
+                articleGraph.addEdge(source, target);
+            }
+        }
+    }
+    fin.close();
+}
+
+void saveAllDataToFiles()
+{
+    // 1. Artikel dan komentar
+    ofstream fout("articles.txt");
+    for (int i = 0; i < articlesCount; i++)
+    {
+        Article &a = articles[i];
+        fout << a.id << "|" << a.title << "|" << a.content << "|" << a.category << "|" << a.commentCount << endl;
+
+        // Tulis komentar
+        CommentNode *c = a.commentsHead;
+        while (c)
+        {
+            fout << "KOMENTAR:" << c->text << endl;
+            c = c->next;
+        }
+        fout << "--" << endl; // Penanda akhir artikel
+    }
+    fout.close();
+
+    // 2. Antrian komentar
+    fout.open("pending_comments.txt");
+    CommentNode *node = commentQueue.frontComment;
+    while (node)
+    {
+        fout << node->articleId << "|" << node->text << endl;
+        node = node->next;
+    }
+    fout.close();
+
+    // 3. Riwayat bacaan
+    fout.open("history.txt");
+    StackNode *sn = historyStack.top;
+    while (sn)
+    {
+        fout << sn->article->id << endl;
+        sn = sn->next;
+    }
+    fout.close();
+
+    // 4. Relasi artikel (graf)
+    fout.open("relations.txt");
+    for (int i = 0; i < articleGraph.vertexCount; i++)
+    {
+        ArticleVertex *v = articleGraph.vertices[i];
+        fout << v->article->id << "|";
+        for (int j = 0; j < v->adjCount; j++)
+        {
+            fout << v->adj[j]->article->id;
+            if (j != v->adjCount - 1)
+                fout << ",";
+        }
+        fout << endl;
+    }
+    fout.close();
+}
+/* End Database Functions */
+
 void visitorPage()
 {
     int choice;
@@ -1503,7 +1668,7 @@ void editorPage()
 
 int main()
 {
-    generateDummyArticles();
+    loadAllDataFromFiles();
     int choice;
 
     do
@@ -1519,6 +1684,9 @@ int main()
             editorPage();
             break;
         case 0:
+            cout << "Simpan semua data ke file..." << endl;
+            saveAllDataToFiles();
+            cout << "Data berhasil disimpan." << endl;
             cout << "Terima kasih telah menggunakan sistem ini. Sampai jumpa!" << endl;
             break;
         default:

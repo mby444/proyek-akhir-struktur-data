@@ -1,0 +1,18 @@
+A001|Pengenalan Linked List|Artikel ini membahas konsep dasar dan implementasi linked list dalam C++.|Struktur Linear|12
+KOMENTAR:Artikel sangat jelas. Terima kasih!
+KOMENTAR:Mohon sertakan contoh circular linked list.
+KOMENTAR:Masih bingung saat menambah node di tengah.
+KOMENTAR:Sangat mengedukasi!
+--
+A002|Konsep Stack dan Queue|Penjelasan perbedaan antara stack (LIFO) dan queue (FIFO).|Struktur Linear|6
+KOMENTAR:Tolong tambahkan visualisasi stack dengan array.
+KOMENTAR:Apa perbedaan antara queue dan deque?
+--
+A003|Hash Table dan Implementasinya|Pembahasan tentang metode hashing, collision handling, dan contoh implementasi.|Struktur Asosiatif|6
+KOMENTAR:Bagus! Tapi linear probing belum dijelaskan lengkap.
+KOMENTAR:Tolong tambahkan hash function yang efisien.
+--
+A004|Pemanfaatan Tree pada Sistem File|Struktur tree dalam file system seperti Unix dan Windows.|Struktur Hirarki|0
+--
+A010|Cara Menggunakan Tree|Begini...|Struktur hirarki|0
+--

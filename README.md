@@ -218,6 +218,7 @@ Menampilkan artikel:
 ### **Peran: EDITOR**
 
 ```
+Jelaskan setiap fitur editor ini masing-masing satu paragraf
 ======================================
       DATA STRUCTURE EXPLORER
               -- Editor --

@@ -1,18 +1,28 @@
-A001|Pengenalan Linked List|Artikel ini membahas konsep dasar dan implementasi linked list dalam C++.|Struktur Linear|12
+A001|Pengenalan Linked List 2|Linked List merupakan struktur yang terdiri dari node dan pointer yang terhubung ke node lainnya|Struktur Linear|4
 KOMENTAR:Artikel sangat jelas. Terima kasih!
 KOMENTAR:Mohon sertakan contoh circular linked list.
 KOMENTAR:Masih bingung saat menambah node di tengah.
 KOMENTAR:Sangat mengedukasi!
 --
-A002|Konsep Stack dan Queue|Penjelasan perbedaan antara stack (LIFO) dan queue (FIFO).|Struktur Linear|6
+A002|Konsep Stack dan Queue|Penjelasan perbedaan antara stack (LIFO) dan queue (FIFO).|Struktur Linear|4
 KOMENTAR:Tolong tambahkan visualisasi stack dengan array.
 KOMENTAR:Apa perbedaan antara queue dan deque?
+KOMENTAR:Keren sekali!
+KOMENTAR:Menarik sekali
 --
-A003|Hash Table dan Implementasinya|Pembahasan tentang metode hashing, collision handling, dan contoh implementasi.|Struktur Asosiatif|6
+A003|Hash Table dan Implementasinya|Pembahasan tentang metode hashing, collision handling, dan contoh implementasi.|Struktur Asosiatif|3
 KOMENTAR:Bagus! Tapi linear probing belum dijelaskan lengkap.
 KOMENTAR:Tolong tambahkan hash function yang efisien.
+KOMENTAR:Bisa jelaskan lebih detail lagi tentang collision handling?
 --
 A004|Pemanfaatan Tree pada Sistem File|Struktur tree dalam file system seperti Unix dan Windows.|Struktur Hirarki|0
 --
 A010|Cara Menggunakan Tree|Begini...|Struktur hirarki|0
+--
+A012|Implementasi Linked List|Linked List dapat diimplementasikan dengan cara begini...|Struktur Linear|0
+--
+A020|Perbedaan open addresing dan closed addressing pada penanganan collision pada Hash Table|Open addressing menggunakan linked list, sedangkan closed addressing menggunakan array.|Struktur Asosiatif|1
+KOMENTAR:Tolong berikan visualisasinya
+--
+A133|Penerapan BST di dunia nyata|Binary Search Tree dapat digunakan untuk pencarian cepat secara biner.|Struktur Hirarki|0
 --

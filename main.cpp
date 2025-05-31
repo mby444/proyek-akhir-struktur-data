@@ -10,17 +10,16 @@ using namespace std;
 #define MAX_ARTICLE 100
 #define MAX_COMMENT 100
 #define MAX_ADJ 10
-#define MAX_HISTORY 50
 
 void outputMainHeader()
 {
-    cout << "======================================" << endl;
-    cout << "         DATA STRUKTUR EXPLORER       " << endl;
-    cout << "     Sistem Mini-Ensklopedia Interaktif" << endl;
-    cout << "======================================" << endl;
+    cout << "============================================" << endl;
+    cout << "         DATA STRUKTUR EXPLORER             " << endl;
+    cout << "     Sistem Mini-Ensklopedia Interaktif     " << endl;
+    cout << "============================================" << endl;
     cout << "1. Masuk Sebagai Pengunjung" << endl;
     cout << "2. Masuk Sebagai Editor" << endl;
-    cout << "0. Kembali" << endl;
+    cout << "0. Simpan dan Keluar" << endl;
     cout << endl;
 }
 
@@ -54,7 +53,7 @@ void outputHeaderVisitor()
     cout << "5. Lihat Riwayat Bacaan" << endl;
     cout << "6. Jelajahi Topik Terkait" << endl;
     cout << "7. Jelajahi Kategori Artikel" << endl;
-    cout << "0. Simpan dan Keluar" << endl;
+    cout << "0. Kembali" << endl;
     cout << endl;
 }
 
@@ -120,6 +119,7 @@ bool inputYN(string label)
     {
         cout << label << " (Y/N): ";
         cin >> answer;
+        cin.ignore(1000, '\n');
 
         if (answer == "Y" || answer == "y")
             return true;
@@ -127,7 +127,6 @@ bool inputYN(string label)
             return false;
 
         cout << "Input tidak valid. Harap masukkan Y atau N." << endl;
-        cin.ignore(1000, '\n');
     }
 }
 
@@ -247,7 +246,6 @@ struct CommentQueue
             rearComment = nullptr;
         }
         delete temp;
-        // cout << "Komentar berhasil diproses dan dihapus dari antrian." << endl;
     }
 
     CommentNode *peek()
@@ -346,7 +344,7 @@ struct ArticleVertex
 
     void showRelated()
     {
-        cout << "Artikel terkait untuk " << article->title << ":" << endl;
+        cout << "Artikel terkait untuk [" << article->id << "] " << article->title << ":" << endl;
         for (int i = 0; i < adjCount; i++)
         {
             cout << "- [ID: " << adj[i]->article->id << "] " << adj[i]->article->title << endl;
@@ -471,21 +469,12 @@ struct ArticleGraph
         }
     }
 
-    void dfs(ArticleVertex *v)
+    void showAllAdjacent()
     {
-        if (v == nullptr || v->visited)
-            return;
-
-        v->visited = true;
-        // cout << "Visited: " << v->article->title << endl;
-
-        for (int i = 0; i < v->adjCount; i++)
+        for (int i = 0; i < vertexCount; i++)
         {
-            if (!v->adj[i]->visited)
-            {
-                cout << "- " << v->article->title << " → " << v->adj[i]->article->title << endl;
-                dfs(v->adj[i]);
-            }
+            cout << "Artikel: " << vertices[i]->article->title << endl;
+            vertices[i]->showRelated();
         }
     }
 
@@ -888,25 +877,6 @@ void readArticle(Article *a)
     cout << "----------------------------------------" << endl;
 }
 
-int binarySearchArticle(string title)
-{
-    int left = 0;
-    int right = articlesCount - 1;
-
-    while (left <= right)
-    {
-        int mid = left + (right - left) / 2;
-
-        if (articles[mid].title == title)
-            return mid;
-        else if (articles[mid].title < title)
-            left = mid + 1;
-        else
-            right = mid - 1;
-    }
-    return -1;
-}
-
 Article *searchArticle(string keyword)
 {
     Article *article = nullptr;
@@ -928,7 +898,6 @@ Article *searchArticle(string keyword)
     return article;
 }
 
-// TODO: Implementasi komentar artikel
 void searchAndReadArticle()
 {
     if (articlesCount == 0)
@@ -1021,8 +990,6 @@ void showReadingHistory()
         {
             cout << "Kembali ke artikel: " << prev->title << endl;
             readArticle(prev);
-            // cout << prev->content << endl;
-            // showArticleComments(*prev);
         }
         else
         {
@@ -1108,27 +1075,6 @@ void exploreRelatedTopics()
 }
 
 // 7. Jelajahi Kategori Artikel
-int linearSearchString(string arr[], int size, string target)
-{
-    for (int i = 0; i < size; i++)
-    {
-        if (arr[i] == target)
-            return i;
-    }
-    return -1;
-}
-
-void getUniqueCategories(Article articles[], int count, string uniqueCategories[], int &uniqueCount)
-{
-    for (int i = 0; i < count; i++)
-    {
-        if (linearSearchString(uniqueCategories, uniqueCount, articles[i].category) == -1)
-        {
-            uniqueCategories[uniqueCount++] = articles[i].category;
-        }
-    }
-}
-
 void exploreCategories()
 {
     if (categoryTree.isEmpty())
@@ -1193,13 +1139,6 @@ int inputRelatedCount()
     return count;
 }
 
-void addArticleToAllStructures(Article *article)
-{
-    categoryTree.insert(article->category, article);
-    hashTable.insert(article->id, article);
-    articleGraph.addArticle(article);
-}
-
 void connectRelatedArticles(Article *article)
 {
     ArticleVertex *vertex = articleGraph.findVertex(article);
@@ -1247,6 +1186,13 @@ void connectRelatedArticles(Article *article)
          << "Total artikel terkait yang dihubungkan: " << count << endl;
 }
 
+void addArticleToAllStructures(Article *article)
+{
+    categoryTree.insert(article->category, article);
+    hashTable.insert(article->id, article);
+    articleGraph.addArticle(article);
+}
+
 void addArticle()
 {
     if (articlesCount >= MAX_ARTICLE)
@@ -1267,50 +1213,6 @@ void addArticle()
     if (articleGraph.vertexCount > 1)
     {
         connectRelatedArticles(articlePtr);
-    }
-}
-
-void generateDummyArticles()
-{
-    string randomIds[15] = {
-        "A001", "A002", "A003", "A004", "A005",
-        "A006", "A007", "A008", "A009", "A010",
-        "A011", "A012", "A013", "A014", "A015"};
-    string randomTitles[15] = {
-        "Artikel Pertama", "Artikel Kedua", "Artikel Ketiga",
-        "Artikel Keempat", "Artikel Kelima", "Artikel Keenam",
-        "Artikel Ketujuh", "Artikel Kedelapan", "Artikel Kesembilan",
-        "Artikel Kesepuluh", "Artikel Kesebelas", "Artikel Keduabelas",
-        "Artikel Ketigabelas", "Artikel Keempatbelas", "Artikel Kelimabelas"};
-    string randomContents[15] = {
-        "Ini adalah isi artikel pertama.",
-        "Ini adalah isi artikel kedua.",
-        "Ini adalah isi artikel ketiga.",
-        "Ini adalah isi artikel keempat.",
-        "Ini adalah isi artikel kelima.",
-        "Ini adalah isi artikel keenam.",
-        "Ini adalah isi artikel ketujuh.",
-        "Ini adalah isi artikel kedelapan.",
-        "Ini adalah isi artikel kesembilan.",
-        "Ini adalah isi artikel kesepuluh.",
-        "Ini adalah isi artikel kesebelas.",
-        "Ini adalah isi artikel keduabelas.",
-        "Ini adalah isi artikel ketigabelas.",
-        "Ini adalah isi artikel keempatbelas.",
-        "Ini adalah isi artikel kelimabelas."};
-    string randomCategories[5] = {"Teknologi", "Kesehatan", "Olahraga", "Politik", "Ekonomi"};
-
-    for (int i = 0; i < 15; i++)
-    {
-        Article dummyArticle;
-        dummyArticle.id = randomIds[i];
-        dummyArticle.title = randomTitles[i];
-        dummyArticle.content = randomContents[i];
-        dummyArticle.category = randomCategories[i % 5];
-        dummyArticle.commentCount = 0;
-
-        articles[articlesCount++] = dummyArticle;
-        addArticleToAllStructures(&articles[articlesCount - 1]);
     }
 }
 
@@ -1428,6 +1330,7 @@ void showPendingComments()
 /* End editor handler functions */
 
 /* Begin Database Functions */
+// FIXME: Saat mengkoneksikan artikel, tidak dicek terlebih dahulu apakah artikel sudah terkait, akibatnya terjadi banyak edge antara dua artikel
 void loadAllDataFromFiles()
 {
     articlesCount = 0;
@@ -1466,19 +1369,17 @@ void loadAllDataFromFiles()
         else
         {
             stringstream ss(line);
-            string id, title, content, category, commentCountStr;
+            string id, title, content, category;
             getline(ss, id, '|');
             getline(ss, title, '|');
             getline(ss, content, '|');
             getline(ss, category, '|');
-            getline(ss, commentCountStr);
 
             current = new Article;
             current->id = id;
             current->title = title;
             current->content = content;
             current->category = category;
-            current->commentCount = stoi(commentCountStr);
         }
     }
     fin.close();
@@ -1517,13 +1418,15 @@ void loadAllDataFromFiles()
         Article *source = hashTable.search(sourceId);
         if (!source)
             continue;
+        ArticleVertex *sourceVertex = articleGraph.findVertex(source);
 
         stringstream rs(rels);
         string targetId;
         while (getline(rs, targetId, ','))
         {
             Article *target = hashTable.search(targetId);
-            if (target)
+            bool isRelated = sourceVertex->isRelated(target);
+            if (target && !isRelated)
             {
                 articleGraph.addEdge(source, target);
             }
@@ -1565,11 +1468,13 @@ void saveAllDataToFiles()
     // 3. Riwayat bacaan
     fout.open("history.txt");
     StackNode *sn = historyStack.top;
+    string savedHistory;
     while (sn)
     {
-        fout << sn->article->id << endl;
+        savedHistory = sn->article->id + "\n" + savedHistory;
         sn = sn->next;
     }
+    fout << savedHistory;
     fout.close();
 
     // 4. Relasi artikel (graf)

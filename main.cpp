@@ -1330,7 +1330,6 @@ void showPendingComments()
 /* End editor handler functions */
 
 /* Begin Database Functions */
-// FIXME: Saat mengkoneksikan artikel, tidak dicek terlebih dahulu apakah artikel sudah terkait, akibatnya terjadi banyak edge antara dua artikel
 void loadAllDataFromFiles()
 {
     articlesCount = 0;
